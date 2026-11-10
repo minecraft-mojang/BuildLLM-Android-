@@ -25,7 +25,10 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      # GitHub's ubuntu runners already ship the Android SDK; just accept licenses
+      - name: Accept Android licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -46,3 +49,4 @@ jobs:
         with:
           name: LLMLab-debug-apk
           path: ${{ env.PROJ }}/app/build/outputs/apk/debug/*.apk
+          
