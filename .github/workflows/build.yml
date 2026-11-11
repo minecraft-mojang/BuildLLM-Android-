@@ -1,4 +1,5 @@
 name: Build Android APK from zip
+
 on:
   push:
     branches: [main, master]
@@ -7,12 +8,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
+      # Finds the zip in the repo (prefers LLMLab-Android-fixed.zip) and unzips it on the runner
       - name: Unzip project
         run: |
-          ZIP=$(find . -maxdepth 2 -name '*.zip' -not -path './.git/*' | head -n1)
+          if [ -f LLMLab-Android-fixed.zip ]; then ZIP=LLMLab-Android-fixed.zip
+          else ZIP=$(find . -maxdepth 2 -name '*.zip' -not -path './.git/*' | head -n1); fi
           [ -n "$ZIP" ] || { echo "No .zip found in the repo"; exit 1; }
           echo "Using $ZIP"
           mkdir -p /tmp/proj && unzip -q "$ZIP" -d /tmp/proj
@@ -25,19 +29,16 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # GitHub's ubuntu runners already ship the Android SDK; just accept licenses
-      - name: Accept Android licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-
-      - name: Install NDK and CMake
-        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;26.1.10909125" "cmake;3.22.1" > /dev/null || true'
-
+      - name: Install SDK platform, NDK and CMake
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125" "cmake;3.22.1" > /dev/null
 
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
 
-      # Bundle TensorFlow.js into the APK so the app works offline
       - name: Download TF.js into assets
         run: |
           A="$PROJ/app/src/main/assets"
